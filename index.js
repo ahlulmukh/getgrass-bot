@@ -1,13 +1,9 @@
-require('colors');
-const inquirer = require('inquirer');
-const Bot = require('./src/Bot');
-const Config = require('./src/Config');
-const {
-  fetchProxies,
-  readLines,
-  selectProxySource,
-} = require('./src/ProxyManager');
-const { delay, displayHeader } = require('./src/utils');
+require("colors");
+const inquirer = require("inquirer");
+const Bot = require("./src/Bot");
+const Config = require("./src/Config");
+const { fetchProxies, readLines } = require("./src/ProxyManager");
+const { delay, displayHeader } = require("./src/utils");
 
 async function main() {
   displayHeader();
@@ -18,40 +14,25 @@ async function main() {
   const config = new Config();
   const bot = new Bot(config);
 
-  const proxySource = await selectProxySource(inquirer);
+  let proxies = await readLines("proxy.txt");
 
-  let proxies = [];
-  if (proxySource.type === 'file') {
-    proxies = await readLines(proxySource.source);
-  } else if (proxySource.type === 'url') {
-    proxies = await fetchProxies(proxySource.source);
-  } else if (proxySource.type === 'none') {
-    console.log('No proxy selected. Connecting directly.'.cyan);
-  }
-
-  if (proxySource.type !== 'none' && proxies.length === 0) {
-    console.error('No proxies found. Exiting...'.red);
+  if (proxies.length === 0) {
+    console.error("No proxies found in proxy.txt. Exiting...".red);
     return;
   }
 
-  console.log(
-    proxySource.type !== 'none'
-      ? `Loaded ${proxies.length} proxies`.green
-      : 'Direct connection mode enabled.'.green
-  );
+  console.log(`Loaded ${proxies.length} proxies`.green);
 
-  const userIDs = await readLines('uid.txt');
+  const userIDs = await readLines("uid.txt");
   if (userIDs.length === 0) {
-    console.error('No user IDs found in uid.txt. Exiting...'.red);
+    console.error("No user IDs found in uid.txt. Exiting...".red);
     return;
   }
 
   console.log(`Loaded ${userIDs.length} user IDs\n`.green);
 
   const connectionPromises = userIDs.flatMap((userID) =>
-    proxySource.type !== 'none'
-      ? proxies.map((proxy) => bot.connectToProxy(proxy, userID))
-      : [bot.connectDirectly(userID)]
+    proxies.map((proxy) => bot.connectToProxy(proxy, userID))
   );
 
   await Promise.all(connectionPromises);
